@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deptracer"
+version = "0.3.0"
+description = "Runtime dependency tracer and PyInstaller auto-patcher"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+
+[project.scripts]
+deptracer = "deptracer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["deptracer*"]

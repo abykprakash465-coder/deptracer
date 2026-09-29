@@ -1,0 +1,12 @@
+# Copy to deptracer_config.py in the project being bundled.
+TRACE_TIMEOUT = 120
+BUILD_TIMEOUT = 300
+MAX_ITERATIONS = 10
+MAX_SECONDS = 1800
+RESOLVER_TIMEOUT = 30
+MAX_RESOLVER_WORKERS = 8
+RESUME = True
+DRY_RUN = False
+SEARCH_PATHS = [
+    # "/opt/vendor/lib",
+]
