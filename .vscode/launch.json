@@ -1,0 +1,57 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DepTracer: Explain Last Run",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "deptracer.cli",
+      "args": [
+        "explain",
+        "--project-dir",
+        "${workspaceFolder}"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "DepTracer: License Scan",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "deptracer.cli",
+      "args": [
+        "license"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "DepTracer: Build (Dry Run)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "deptracer.cli",
+      "args": [
+        "build",
+        "${workspaceFolder}",
+        "my_app",
+        "my_app.spec",
+        "--dry-run",
+        "-v"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Python: Debug Current Test File",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": [
+        "-v",
+        "${file}"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

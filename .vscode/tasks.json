@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Tests (pytest)",
+      "type": "shell",
+      "command": "python3 -m pytest -v",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Install System Prerequisites (strace & bwrap)",
+      "type": "shell",
+      "command": "sudo apt update && sudo apt install -y strace bubblewrap",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install DepTracer (Editable Mode)",
+      "type": "shell",
+      "command": "python3 -m pip install -e .",
+      "problemMatcher": []
+    }
+  ]
+}

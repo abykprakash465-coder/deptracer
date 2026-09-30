@@ -25,6 +25,7 @@ This repository is an enhanced, competition-oriented version of the original
 | Hanging-process protection | Missing | Dedicated process runner with timeout and process-group cleanup |
 | Test coverage | Limited | Parser, fixer, process, history, and clean-verifier tests |
 | CLI | Basic build/explain | Build, explain, verify-clean, license, timeout/budget/search-path options |
+| Architecture & documentation | Minimal README, no system design or workflow diagrams | Comprehensive architecture documentation with Mermaid lifecycle flowchart and component breakdown |
 
 ## Important corrections
 
@@ -58,6 +59,9 @@ The enhanced project adds an explicit `verify-clean` command. This is the
 competition acceptance step: the fixed binary should be executed in a disposable
 Docker/Podman environment rather than relying only on the tracing sandbox.
 
+### 7. Clear architecture & workflow documentation
+The original codebase lacked high-level architectural documentation and visual workflow representations. The enhanced version adds a comprehensive Mermaid architecture diagram and component breakdown in the README, detailing the multi-stage convergence loop from Bubblewrap isolation to container-based clean verification.
+
 ## New competition features
 
 - `--timeout`
@@ -76,6 +80,7 @@ Docker/Podman environment rather than relying only on the tracing sandbox.
 - JSON event logging
 - GitHub Actions CI
 - examples for runtime dependencies and hanging processes
+- end-to-end Mermaid architecture and lifecycle workflow diagram in README
 
 ## Validation already performed on the enhanced code
 

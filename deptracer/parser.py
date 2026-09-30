@@ -7,11 +7,10 @@ from pathlib import Path
 
 class HiddenImportDetector:
     PATTERN = re.compile(
-        r"\[DEPTRACER-PROBE\].*No module named [\'\"]([a-zA-Z0-9_\.]+)[\'\"]"
+        r"(?:\[DEPTRACER-PROBE\].*|(?:ModuleNotFoundError|ImportError):\s+)No module named [\'\"]([a-zA-Z0-9_\.]+)[\'\"]"
     )
     PATTERN2 = re.compile(
-        r"\[DEPTRACER-PROBE\].*cannot import name [\'\"]([a-zA-Z0-9_]+)[\'\"] "
-        r"from [\'\"]([a-zA-Z0-9_\.]+)[\'\"]"
+        r"(?:\[DEPTRACER-PROBE\].*|ImportError:\s+)cannot import name [\'\"]([a-zA-Z0-9_]+)[\'\"]\s+from\s+[\'\"]([a-zA-Z0-9_\.]+)[\'\"]"
     )
 
     @classmethod
@@ -34,7 +33,7 @@ class HiddenImportDetector:
 
 class TraceParser:
     SYSCALL_ANY = re.compile(
-        r'(?:openat|open|newfstatat|stat|access|readlink)\('
+        r'(?:openat2|openat|open|newfstatat|fstatat64|fstatat|statx|stat|faccessat2|faccessat|access|readlinkat|readlink)\('
         r'.*?"((?:\\.|[^"\\])*)".*?\)\s*=\s*(-1\s+\w+|\d+)'
     )
 
@@ -88,8 +87,8 @@ class TraceParser:
     @classmethod
     def stream_missing_libraries(cls, log_file_path, verbose=False):
         cls.load_system_cache()
-        status = {}
-        mapping = {}
+        found_identifiers: set[str] = set()
+        missing_candidates: dict[str, str] = {}
         try:
             lines = Path(log_file_path).read_text(
                 encoding="utf-8", errors="replace"
@@ -109,7 +108,10 @@ class TraceParser:
             filename = os.path.basename(path)
             path_key = os.path.normpath(path)
             if not result.startswith("-1"):
-                status[path_key] = "FOUND"
+                found_identifiers.add(path_key)
+                found_identifiers.add(filename)
+                base = re.sub(r"\.so(\.\d+)*$", ".so", filename)
+                found_identifiers.add(base)
                 continue
 
             parts = result.split()
@@ -125,13 +127,18 @@ class TraceParser:
                     print(f"[PARSER] Unreadable dependency ({errno}): {path}")
                 continue
             if errno == "ENOENT" and not cls.is_system_noise(path):
-                if status.get(filename) != "FOUND":
-                    status[path_key] = "MISSING"
-                    mapping[path_key] = path
+                missing_candidates[path_key] = path
 
-        for path_key, state in status.items():
-            if state == "MISSING":
-                yield mapping[path_key]
+        for path_key, path in missing_candidates.items():
+            filename = os.path.basename(path)
+            base = re.sub(r"\.so(\.\d+)*$", ".so", filename)
+            if (
+                path_key in found_identifiers
+                or filename in found_identifiers
+                or base in found_identifiers
+            ):
+                continue
+            yield path
 
 
 def extract_missing_libraries(log_file_path, verbose=False):

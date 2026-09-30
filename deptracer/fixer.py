@@ -27,17 +27,25 @@ def _analysis_end(lines: list[str]) -> int:
     raise ValueError("Could not locate Analysis(...) in spec file")
 
 
-def _build_additions(payload) -> list[str]:
+def _build_additions(payload, project_dir: Path | str | None = None) -> list[str]:
     additions = []
+    proj_path = Path(project_dir).resolve() if project_dir else None
+
     for name, path in payload.get("binaries", []):
         if os.path.isfile(path):
+            dest = os.path.basename(path)
             additions.append(
-                f"a.binaries += [({_safe_literal(path)}, '.')]\n"
+                f"a.binaries += [({_safe_literal(dest)}, {_safe_literal(path)}, 'BINARY')]\n"
             )
     for name, path in payload.get("data", []):
         if os.path.isfile(path):
+            abs_p = Path(path).resolve()
+            if proj_path and abs_p.is_relative_to(proj_path):
+                dest = str(abs_p.relative_to(proj_path))
+            else:
+                dest = os.path.basename(path)
             additions.append(
-                f"a.datas += [({_safe_literal(path)}, '.')]\n"
+                f"a.datas += [({_safe_literal(dest)}, {_safe_literal(path)}, 'DATA')]\n"
             )
     hidden = [
         x for x in payload.get("hidden_imports", [])
@@ -52,13 +60,16 @@ def _build_additions(payload) -> list[str]:
     return additions
 
 
-def patch_spec_file(spec_path, resolved_payload, *, dry_run=False):
+def patch_spec_file(spec_path, resolved_payload, *, project_dir=None, dry_run=False):
     spec = Path(spec_path)
     if not spec.is_file() or not os.access(spec, os.W_OK):
         raise PermissionError(f"Spec file is missing or not writable: {spec}")
 
+    if project_dir is None:
+        project_dir = spec.parent
+
     original = spec.read_text(encoding="utf-8")
-    additions = _build_additions(resolved_payload)
+    additions = _build_additions(resolved_payload, project_dir=project_dir)
     if not additions:
         return False
 

@@ -16,13 +16,14 @@ def main():
         description="Runtime dependency tracer and PyInstaller auto-patcher",
     )
     p.add_argument("--version", action="version", version=f"deptracer {__version__}")
-    p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("-v", "--verbose", action="store_true", dest="verbose_root")
     sub = p.add_subparsers(dest="command")
 
     b = sub.add_parser("build", help="Trace, patch, rebuild and verify")
     b.add_argument("project_dir")
     b.add_argument("binary_name")
     b.add_argument("spec_name")
+    b.add_argument("-v", "--verbose", action="store_true", dest="verbose_sub")
     b.add_argument("--timeout", type=float, help="trace timeout in seconds")
     b.add_argument("--build-timeout", type=float)
     b.add_argument("--max-iterations", type=int)
@@ -37,21 +38,25 @@ def main():
     e = sub.add_parser("explain", help="Show structured history from the last run")
     e.add_argument("--project-dir", default=".")
     e.add_argument("--json", action="store_true")
+    e.add_argument("-v", "--verbose", action="store_true", dest="verbose_sub")
 
     c = sub.add_parser("verify-clean", help="Run the final binary in a disposable Docker/Podman environment")
     c.add_argument("binary")
     c.add_argument("--image", default="ubuntu:24.04")
     c.add_argument("--timeout", type=float, default=180.0)
+    c.add_argument("-v", "--verbose", action="store_true", dest="verbose_sub")
 
     l = sub.add_parser("license", help="Report package license metadata in the build environment")
     l.add_argument("--json", action="store_true")
     l.add_argument("--fail-on-gpl", action="store_true")
+    l.add_argument("-v", "--verbose", action="store_true", dest="verbose_sub")
 
     args = p.parse_args()
+    verbose = bool(args.verbose_root or getattr(args, "verbose_sub", False))
 
     if args.command == "build":
         cfg = Config(
-            verbose=args.verbose,
+            verbose=verbose,
             trace_timeout=args.timeout or 120.0,
             build_timeout=args.build_timeout or 300.0,
             max_iterations=args.max_iterations or 10,
@@ -65,7 +70,7 @@ def main():
         )
         ok = run_akdeptracer(
             args.project_dir, args.binary_name, args.spec_name,
-            verbose=args.verbose, config=cfg
+            verbose=verbose, config=cfg
         )
         raise SystemExit(0 if ok else 1)
 

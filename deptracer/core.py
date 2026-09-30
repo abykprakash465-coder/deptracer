@@ -76,6 +76,11 @@ def run_akdeptracer(
         UI.error("CORE", f"Binary not found after initial build: {target}")
         return False
 
+    executable = target / binary_name if target.is_dir() else target
+    if not executable.exists() and not (dry_run is True):
+        UI.error("CORE", f"Executable binary not found: {executable}")
+        return False
+
     cfg = config or load_config(root)
     overrides = {
         "verbose": verbose,
@@ -112,9 +117,10 @@ def run_akdeptracer(
         if cfg.json_output:
             _write_json_event(event_log, event)
 
+        executable = target / binary_name if target.is_dir() else target
         try:
             result = tracer.run_and_trace(
-                str(target), str(root),
+                str(executable), str(root),
                 verbose=cfg.verbose, timeout=cfg.trace_timeout
             )
         except Exception as exc:
@@ -147,10 +153,10 @@ def run_akdeptracer(
             return False
 
         payload = {"binaries": [], "data": [], "hidden_imports": []}
-        names = deps["binaries"] + deps["data"]
+        raw_names = deps["binaries"] + deps["data"]
         already = set(history.data.get("injected", {}).get("binaries", []))
         already |= set(history.data.get("injected", {}).get("data", []))
-        names = [n for n in names if os.path.basename(n) not in already]
+        names = [os.path.basename(n) for n in raw_names if os.path.basename(n) not in already]
 
         UI.step("PARSER", f"Found {missing_count} runtime issue(s).")
         resolutions = resolver.resolve_many(
@@ -163,8 +169,12 @@ def run_akdeptracer(
 
         unresolved = []
         for category in ("binaries", "data"):
+            seen_in_cat = set()
             for missing in deps[category]:
                 base = os.path.basename(missing)
+                if base in seen_in_cat:
+                    continue
+                seen_in_cat.add(base)
                 found = resolutions.get(base)
                 if found:
                     payload[category].append((base, found))
@@ -196,7 +206,7 @@ def run_akdeptracer(
             history.finish("dry_run")
             return True
 
-        patched = fixer.patch_spec_file(str(spec_file), payload)
+        patched = fixer.patch_spec_file(str(spec_file), payload, project_dir=root)
         if not patched:
             history.finish("fixer_noop", "Spec already contains managed additions.")
             UI.error("FIXER", "No new spec changes were produced.")

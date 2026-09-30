@@ -25,26 +25,45 @@ def safe_realpath(path: str, max_depth: int = 20) -> str:
     return current
 
 
-def environment_search_paths(project_dir: str, extra: list[str] | None = None):
+def is_binary_dependency(name: str) -> bool:
+    lower = name.lower()
+    return any(
+        re.search(re.escape(ext) + r"(\.\d+)*$", lower)
+        for ext in (".so", ".dll", ".dylib", ".pyd")
+    )
+
+
+def environment_search_paths(
+    project_dir: str,
+    extra: list[str] | None = None,
+    *,
+    is_binary: bool = True,
+):
     root = Path(project_dir).resolve()
     paths = [
         root, root / "lib", root / "libs", root / "vendor",
         root / "build", root / "build" / "lib",
         root / ".venv", root / ".venv" / "lib",
-        Path("/usr/local/lib"), Path("/usr/lib"),
-        Path("/lib"), Path("/lib64"),
     ]
+    if is_binary:
+        paths += [
+            Path("/usr/local/lib"), Path("/usr/lib"),
+            Path("/lib"), Path("/lib64"),
+        ]
     try:
         paths += [Path(x) for x in site.getsitepackages()]
         paths.append(Path(site.getusersitepackages()))
     except Exception:
         pass
 
-    prefixes = [os.sys.prefix]
+    prefixes = []
     if os.environ.get("CONDA_PREFIX"):
         prefixes.append(os.environ["CONDA_PREFIX"])
     if os.environ.get("VIRTUAL_ENV"):
         prefixes.append(os.environ["VIRTUAL_ENV"])
+    if os.sys.prefix not in ("/usr", "/usr/local") or is_binary:
+        prefixes.append(os.sys.prefix)
+
     for prefix in prefixes:
         p = Path(prefix)
         paths += [p, p / "lib", p / "lib64", p / "bin"]
@@ -76,8 +95,9 @@ def _find_in_dir(directory: Path, variants: list[str], timeout: float):
             expression.append("-o")
         expression.extend(["-name", variant])
 
+    depth = "4" if str(directory).startswith(("/usr", "/lib", "/var")) else "10"
     command = [
-        "find", str(directory), "-type", "f", "-readable",
+        "find", str(directory), "-maxdepth", depth, "-type", "f", "-readable",
         "(", *expression, ")", "-print", "-quit",
     ]
     try:
@@ -98,9 +118,17 @@ def hunt_missing_library(
     timeout: float = 30.0,
     verbose: bool = False,
 ):
-    base = re.sub(r"\.so(\.\d+)*$", ".so", file_name)
-    variants = list(dict.fromkeys([file_name, base, base + ".1", base + ".0"]))
-    zones = environment_search_paths(project_dir, search_paths)
+    is_binary = is_binary_dependency(file_name)
+    if is_binary:
+        base = re.sub(r"\.so(\.\d+)*$", ".so", file_name)
+        variants = list(dict.fromkeys([
+            file_name, base,
+            base + ".1", base + ".2", base + ".3", base + ".0"
+        ]))
+    else:
+        variants = [file_name]
+
+    zones = environment_search_paths(project_dir, search_paths, is_binary=is_binary)
 
     root = str(Path(project_dir).resolve())
 

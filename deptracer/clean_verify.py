@@ -16,10 +16,17 @@ def verify_clean(binary: str, *, image: str = "ubuntu:24.04", timeout: float = 1
     if not engine:
         raise RuntimeError("Neither docker nor podman is installed")
     binary_path = Path(binary).resolve()
-    if not binary_path.is_file():
-        raise FileNotFoundError(binary_path)
-    inner = command or f"/opt/app/{binary_path.name}"
-    cmd = [engine, "run", "--rm", "--network", "none", "-v", f"{binary_path}:/opt/app/{binary_path.name}:ro", image, "sh", "-lc", inner]
+    if not binary_path.exists():
+        raise FileNotFoundError(f"Binary or directory not found: {binary_path}")
+
+    if binary_path.is_dir():
+        inner = command or f"/opt/app/{binary_path.name}"
+        mount_arg = f"{binary_path}:/opt/app:ro"
+    else:
+        inner = command or f"/opt/app/{binary_path.name}"
+        mount_arg = f"{binary_path}:/opt/app/{binary_path.name}:ro"
+
+    cmd = [engine, "run", "--rm", "--network", "none", "-v", mount_arg, image, "sh", "-lc", inner]
     try:
         result = subprocess.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
